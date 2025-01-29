@@ -66,7 +66,7 @@ public class Game : App
 
 	public Game(AppConfig config) : base(config)
 	{
-		target = new(GraphicsDevice, Width, Height, [TextureFormat.Color, TextureFormat.Depth24Stencil8]);
+		target = new(GraphicsDevice, Width, Height, [TextureFormat.Color, TextureFormat.Depth16]);
 		batcher = new(GraphicsDevice);
 
 		GraphicsDevice.VSync = true;
