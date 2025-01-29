@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Celeste64;
 
@@ -13,55 +15,59 @@ public class Startup : Scene
 	private void BeginGame()
 	{
 		// load assets
-		Assets.Load();
+		Assets.Load(GraphicsDevice);
 
 		// load save file
 		{
-			var saveFile = Path.Join(App.UserPath, Save.FileName);
+			var saveFile = Path.Join(Game.UserPath, Save.FileName);
 
 			if (File.Exists(saveFile))
 				Save.Instance = Save.Deserialize(File.ReadAllText(saveFile)) ?? new();
 			else
 				Save.Instance = new();
-			Save.Instance.SyncSettings();
+			Save.Instance.ApplySettings(Game);
 		}
 
 		// make sure the active language is ready for use,
 		// since the save file may have loaded a different language than default.
-		Language.Current.Use();
+		Language.Current.Use(GraphicsDevice);
 
 		// try to load controls, or overwrite with defaults if they don't exist
+		// if (false)
 		{
-			var controlsFile = Path.Join(App.UserPath, ControlsConfig.FileName);
+			var controlsFile = Path.Join(Game.UserPath, ControlsConfig.FileName);
 
-			ControlsConfig? controls = null;
+			ControlsConfig? controlConfig = null;
 			if (File.Exists(controlsFile))
 			{
 				try
 				{
-					controls = JsonSerializer.Deserialize(File.ReadAllText(controlsFile), ControlsConfigContext.Default.ControlsConfig);
+					controlConfig = JsonSerializer.Deserialize(File.ReadAllText(controlsFile), ControlsConfigContext.Default.ControlsConfig);
 				}
 				catch
 				{
-					controls = null;
+					controlConfig = null;
 				}
 			}
 
 			// create defaults if not found
-			if (controls == null)
+			if (controlConfig == null)
 			{
-				controls = ControlsConfig.Defaults;
-				using var stream = File.Create(controlsFile);
-				JsonSerializer.Serialize(stream, ControlsConfig.Defaults, ControlsConfigContext.Default.ControlsConfig);
-				stream.Flush();
+				controlConfig = new();
+				
+				var data = JsonSerializer.Serialize(controlConfig, ControlsConfigContext.Default.ControlsConfig);
+				data = MakeBindingsOneLine(data);
+				File.WriteAllText(controlsFile, data);
 			}
-			
-			Controls.Load(controls);
+			else
+			{
+				Game.Controls = new(Input, controlConfig, 0);
+			}
 		}
 
 		// enter game
 		//Assets.Levels[0].Enter(new AngledWipe());
-		Game.Instance.Goto(new Transition()
+		Game.Goto(new Transition()
 		{
 			Mode = Transition.Modes.Replace,
 			Scene = () => new Titlescreen(),
@@ -84,4 +90,45 @@ public class Startup : Scene
     {
 		target.Clear(Color.Black);
     }
+
+	/// <summary>
+	/// This is all so that each Binding in the Controls Json file ends up on one line.
+	/// Otherwise the Json file is huge
+	/// </summary>
+	private static string MakeBindingsOneLine(string input)
+	{
+		StringBuilder result = new();
+
+		var depth = 0;
+		var skippingWhitespace = false;
+
+		for (int i = 0; i < input.Length; i ++)
+		{
+			if (!skippingWhitespace && input[i] == '{')
+			{
+				int n = 1;
+				while (char.IsWhiteSpace(input[i + n]))
+					n++;
+				if (input.AsSpan(i + n).StartsWith("\"$type\":"))
+					skippingWhitespace = true;
+			}
+
+			if (skippingWhitespace)
+			{
+				if (input[i] == '{')
+					depth++;
+				if (input[i] == '}')
+				{
+					depth--;
+					if (depth <= 0)
+						skippingWhitespace = false;
+				}
+			}
+
+			if (!char.IsWhiteSpace(input[i]) || !skippingWhitespace)
+				result.Append(input[i]);
+		}
+
+		return result.ToString();
+	}
 }

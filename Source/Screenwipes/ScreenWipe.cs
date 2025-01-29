@@ -24,11 +24,11 @@ public abstract class ScreenWipe
 		Start();
 	}
 
-	public void Update()
+	public void Update(in Time time)
 	{
 		if (percent < 1)
 		{
-			percent = Calc.Approach(percent, 1.0f, Time.Delta / duration);
+			percent = Calc.Approach(percent, 1.0f, time.Delta / duration);
 			Step(percent);
 			if (percent >= 1.0f)
 				IsFinished = true;

@@ -7,15 +7,6 @@ namespace Celeste64;
 
 public static class Audio
 {
-	private class Module : Foster.Framework.Module
-	{
-		public override void Update() 
-			=> Audio.Update();
-
-		public override void Shutdown()
-			=> Audio.Shutdown();
-	}
-
 	private static FMOD.Studio.System system;
 	private static readonly List<Bank> banks = [];
 	private static readonly Dictionary<string, FMOD.GUID> events = [];
@@ -49,8 +40,6 @@ public static class Audio
 
 		// Initialize FMOD
 		Check(system.initialize(1024, studioFlags, flags, IntPtr.Zero));
-
-		App.Register<Module>();
 	}
 
 	private static bool isResolverSet = false;
@@ -104,12 +93,12 @@ public static class Audio
 		Check(result);
 	}
 
-	private static void Update()
+	public static void Update()
 	{
 		system.update();
 	}
 
-	private static void Shutdown()
+	public static void Shutdown()
 	{
 		Unload();
 		Check(system.release());

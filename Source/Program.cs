@@ -8,11 +8,13 @@ class Program
 {
 	public static void Main(string[] args)
 	{
+		string errorLogPath = Directory.GetCurrentDirectory();
+
 		Log.Info($"Celeste 64 v.{Game.Version.Major}.{Game.Version.Minor}.{Game.Version.Build}");
 
 		AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
 		{
-			HandleError((Exception)e.ExceptionObject);
+			HandleError(errorLogPath, (Exception)e.ExceptionObject);
 		};
 
 		Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -20,17 +22,27 @@ class Program
 		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-		try
+		// try
 		{
-			App.Run<Game>(Game.GamePath, 1280, 720);
+			using var game = new Game(new(
+				ApplicationName: Game.GamePath,
+				WindowTitle: Game.GameTitle,
+				Width: 1280,
+				Height: 720,
+				Fullscreen: false,
+				Resizable: true,
+				UpdateMode: UpdateMode.FixedStep(60)
+			));
+			errorLogPath = game.UserPath;
+			game.Run();
 		}
-		catch (Exception e)
-		{
-			HandleError(e);
-		}
+		// catch (Exception e)
+		// {
+		// 	HandleError(errorLogPath, e);
+		// }
 	}
 	
-	private static void HandleError(Exception e)
+	private static void HandleError(string path, Exception e)
 	{
 		// write error to console in case they can see stdout
 		Console.WriteLine(e?.ToString() ?? string.Empty);
@@ -43,26 +55,11 @@ class Program
 		error.AppendLine($"Call Stack:");
 		error.AppendLine(e?.ToString() ?? string.Empty);
 		error.AppendLine($"Game Output:");
-		lock (Log.Logs)
-			error.AppendLine(Log.Logs.ToString());
+		error.AppendLine(Log.GetHistory());
 
 		// write to file
-		string path = ErrorFileName;
-		{
-			if (App.Running)
-			{
-				try
-				{
-					path = Path.Join(App.UserPath, ErrorFileName);
-				}
-				catch
-				{
-					path = ErrorFileName;
-				}
-			}
-
-			File.WriteAllText(path, error.ToString());
-		}
+		path = Path.Combine(path, ErrorFileName);
+		File.WriteAllText(path, error.ToString());
 
 		// open the file
 		if (File.Exists(path))

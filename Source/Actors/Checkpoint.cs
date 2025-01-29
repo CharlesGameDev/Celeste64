@@ -38,7 +38,7 @@ public class Checkpoint : Actor, IHaveModels, IPickup, IHaveSprites
 		if (IsCurrent)
 		{
 			Calc.Approach(ref tWiggle, 0, Time.Delta / 0.7f);
-			CurrentModel.Update();
+			CurrentModel.Update(Time);
 		}
 	}
 

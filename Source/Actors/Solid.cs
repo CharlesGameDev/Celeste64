@@ -70,7 +70,7 @@ public class Solid : Actor, IHaveModels
 
     public override void Destroyed()
     {
-		World.SolidGrid.Remove(this, new Rect(lastWorldBounds.Min.XY(), lastWorldBounds.Max.XY()));
+		World.SolidGrid.Remove(this, Rect.Between(lastWorldBounds.Min.XY(), lastWorldBounds.Max.XY()));
     }
 
     public override void Update()
@@ -107,8 +107,8 @@ public class Solid : Actor, IHaveModels
 
 			if (Alive)
 			{
-				World.SolidGrid.Remove(this, new Rect(lastWorldBounds.Min.XY(), lastWorldBounds.Max.XY()));
-				World.SolidGrid.Insert(this, new Rect(WorldBounds.Min.XY(), WorldBounds.Max.XY()));
+				World.SolidGrid.Remove(this, Rect.Between(lastWorldBounds.Min.XY(), lastWorldBounds.Max.XY()));
+				World.SolidGrid.Insert(this, Rect.Between(WorldBounds.Min.XY(), WorldBounds.Max.XY()));
 				lastWorldBounds = WorldBounds;
 			}
 		}

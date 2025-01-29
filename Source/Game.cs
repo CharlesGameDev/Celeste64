@@ -24,7 +24,7 @@ public struct Transition
 	public float HoldOnBlackFor;
 }
 
-public class Game : Module
+public class Game : App
 {
 	private enum TransitionStep
 	{
@@ -51,36 +51,39 @@ public class Game : Module
 	public static Game Instance => instance ?? throw new Exception("Game isn't running");
 
 	private readonly Stack<Scene> scenes = new();
-	private readonly Target target = new(Width, Height, [TextureFormat.Color, TextureFormat.Depth24Stencil8]);
-	private readonly Batcher batcher = new();
+	private readonly Target target;
+	private readonly Batcher batcher;
 	private Transition transition;
 	private TransitionStep transitionStep = TransitionStep.None;
 	private readonly FMOD.Studio.EVENT_CALLBACK audioEventCallback;
 	private int audioBeatCounter;
 	private bool audioBeatCounterEvent;
+	private bool mouseCameraEnabled = false;
 
 	public AudioHandle Ambience;
 	public AudioHandle Music;
+	public Controls Controls;
 
-	public Game()
+	public Game(AppConfig config) : base(config)
 	{
+		target = new(GraphicsDevice, Width, Height, [TextureFormat.Color, TextureFormat.Depth24Stencil8]);
+		batcher = new(GraphicsDevice);
+
+		GraphicsDevice.VSync = true;
+		Controls = new(Input, new ControlsConfig(), 0);
+
 		// If this isn't stored, the delegate will get GC'd and everything will crash :)
 		audioEventCallback = MusicTimelineCallback;
 	}
 
-	public override void Startup()
+	protected override void Startup()
 	{
 		instance = this;
-		
-		Time.FixedStep = true;
-		App.VSync = true;
-		App.Title = GameTitle;
 		Audio.Init();
-
 		scenes.Push(new Startup());
 	}
 
-	public override void Shutdown()
+	protected override void Shutdown()
 	{
 		if (scenes.TryPeek(out var topScene))
 			topScene.Exited();
@@ -93,6 +96,7 @@ public class Game : Module
 		
 		scenes.Clear();
 		instance = null;
+		Audio.Shutdown();
 	}
 
 	public bool IsMidTransition => transitionStep != TransitionStep.None;
@@ -110,8 +114,28 @@ public class Game : Module
 			Music.Stop();
 	}
 
-	public override void Update()
+	protected override void Update()
 	{
+		Audio.Update();
+
+		// toggle mouse camera mode
+		if (Input.Keyboard.Pressed(Keys.Escape))
+			mouseCameraEnabled = false;
+		if (Window.Focused && Input.Mouse.LeftPressed)
+			mouseCameraEnabled = true;
+		Window.SetMouseRelativeMode(mouseCameraEnabled);
+
+		// update input filters depending on state
+		{
+			Input.BindingFilters.Clear();
+			Input.BindingFilters.Add(Controls.IsUsingNintendo
+				? ControlsConfig.FILTER_NINTENDO
+				: ControlsConfig.FILTER_XBOX);
+			Input.BindingFilters.Add(mouseCameraEnabled 
+				? ControlsConfig.FILTER_MOUSE_CAMERA
+				: ControlsConfig.FILTER_KEYBOARD_CAMERA);
+		}
+
 		// update top scene
 		if (scenes.TryPeek(out var scene))
 		{
@@ -132,7 +156,7 @@ public class Game : Module
 			}
 			else
 			{
-				transition.ToBlack.Update();
+				transition.ToBlack.Update(Time);
 			}
 		}
 		else if (transitionStep == TransitionStep.Hold)
@@ -161,12 +185,12 @@ public class Game : Module
 			// reload assets if requested
 			if (transition.PerformAssetReload)
 			{
-				Assets.Load();
+				Assets.Load(GraphicsDevice);
 			}
 
 			// perform game save between transitions
 			if (transition.Saving)
-				Save.Instance.SaveToFile();
+				Save.Instance.SaveToFile(UserPath);
 
 			// perform transition
 			switch (transition.Mode)
@@ -223,7 +247,7 @@ public class Game : Module
 			}
 
 			// in case new music was played
-			Save.Instance.SyncSettings();
+			Save.Instance.ApplySettings(this);
 			transitionStep = TransitionStep.FadeIn;
 		}
 		else if (transitionStep == TransitionStep.FadeIn)
@@ -235,7 +259,7 @@ public class Game : Module
 			}
 			else
 			{
-				transition.ToBlack.Update();
+				transition.ToBlack.Update(Time);
 			}
 		}
 		else if (transitionStep == TransitionStep.None)
@@ -259,7 +283,7 @@ public class Game : Module
 		{
 			// toggle fullsrceen
 			if ((Input.Keyboard.Alt && Input.Keyboard.Pressed(Keys.Enter)) || Input.Keyboard.Pressed(Keys.F4))
-				Save.Instance.ToggleFullscreen();
+				Save.Instance.ToggleFullscreen(this);
 
 			// reload state
 			if (Input.Keyboard.Ctrl && Input.Keyboard.Pressed(Keys.R) && !IsMidTransition)
@@ -290,9 +314,9 @@ public class Game : Module
 		}
 	}
 
-	public override void Render()
+	protected override void Render()
 	{
-		Graphics.Clear(Color.Black);
+		Window.Clear(Color.Black);
 
 		if (transitionStep != TransitionStep.Perform && transitionStep != TransitionStep.Hold)
 		{
@@ -310,10 +334,11 @@ public class Game : Module
 
 			// draw the target to the window
 			{
-				var scale = Math.Min(App.WidthInPixels / (float)target.Width, App.HeightInPixels / (float)target.Height);
-				batcher.SetSampler(new(TextureFilter.Nearest, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
-				batcher.Image(target, App.SizeInPixels / 2, target.Bounds.Size / 2, Vec2.One * scale, 0, Color.White);
-				batcher.Render();
+				var scale = Math.Min(Window.WidthInPixels / (float)target.Width, Window.HeightInPixels / (float)target.Height);
+				batcher.PushSampler(new(TextureFilter.Nearest, TextureWrap.Clamp, TextureWrap.Clamp));
+				batcher.Image(target, Window.SizeInPixels / 2, target.Bounds.Size / 2, Vec2.One * scale, 0, Color.White);
+				batcher.PopSampler();
+				batcher.Render(Window);
 				batcher.Clear();
 			}
 		}

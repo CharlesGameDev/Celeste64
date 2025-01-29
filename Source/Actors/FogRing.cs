@@ -4,7 +4,7 @@ namespace Celeste64;
 
 public class FogRing : Actor, IHaveModels
 {
-	private readonly SimpleModel model = new();
+	private readonly SimpleModel model;
 	private readonly float height;
 	private readonly float radius;
 	private readonly float speed;
@@ -38,9 +38,9 @@ public class FogRing : Actor, IHaveModels
 			indices.Add(i * 2 + 1);
 		}
 
-
-		model.Mesh.SetVertices<Vertex>(CollectionsMarshal.AsSpan(vertices));
-		model.Mesh.SetIndices<int>(CollectionsMarshal.AsSpan(indices));
+		model = new();
+		model.Mesh.SetVertices(CollectionsMarshal.AsSpan(vertices));
+		model.Mesh.SetIndices(CollectionsMarshal.AsSpan(indices));
 		model.Materials.Add(new DefaultMaterial(Assets.Textures[texture]));
 		model.Parts.Add(new(0, 0, indices.Count));
 		model.CullMode = CullMode.None;

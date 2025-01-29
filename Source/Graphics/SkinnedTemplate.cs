@@ -11,7 +11,7 @@ public class SkinnedTemplate
 		public int Count;
 	}
 
-	public Mesh Mesh { get; set; } = null!;
+	public Mesh<Vertex> Mesh { get; set; } = null!;
 	public readonly SharpGLTF.Schema2.ModelRoot Root;
 	public readonly SharpGLTF.Runtime.SceneTemplate Template;
 	public readonly List<Vertex> Vertices = [];
@@ -87,12 +87,12 @@ public class SkinnedTemplate
 		}
 	}
 
-	public void ConstructResources()
+	public void ConstructResources(GraphicsDevice gfx)
 	{
 		// create all the textures and clear the list of images we had loaded
 		var textures = new Dictionary<SharpGLTF.Memory.MemoryImage, Texture>();
 		foreach (var image in images)
-			textures[image.Key] = new Texture(image.Value);
+			textures[image.Key] = new Texture(gfx, image.Value);
 		images.Clear();
 
 		// create all the materials, find their textures
@@ -114,8 +114,8 @@ public class SkinnedTemplate
 		}
 
 		// upload verts to the mesh
-		Mesh = new();
-		Mesh.SetVertices<Vertex>(CollectionsMarshal.AsSpan(Vertices));
-		Mesh.SetIndices<int>(CollectionsMarshal.AsSpan(Indices));
+		Mesh = new(gfx);
+		Mesh.SetVertices(CollectionsMarshal.AsSpan(Vertices));
+		Mesh.SetIndices(CollectionsMarshal.AsSpan(Indices));
 	}
 }

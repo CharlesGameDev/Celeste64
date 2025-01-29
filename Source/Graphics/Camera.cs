@@ -3,7 +3,7 @@ namespace Celeste64;
 
 public struct Camera()
 {
-	private Target? target = null;
+	private IDrawableTarget target = null!;
 	private Vec3 position =  Vec3.Zero;
 	private Vec3 lookAt = new(0, 1, 0);
 	private float nearPlane = 0.01f;
@@ -19,9 +19,9 @@ public struct Camera()
 	private Vec3? leftwards;
 	private BoundingFrustum? frustum;
 
-	public Target? Target
+	public IDrawableTarget Target
 	{
-		readonly get => target;
+		readonly get => target ?? throw new Exception("Camera must assign a Target");
 		set
 		{
 			if (target != value)
@@ -123,8 +123,8 @@ public struct Camera()
 		{
 			if (!projection.HasValue)
 			{
-				var width = target?.Width ?? App.WidthInPixels;
-				var height = target?.Height ?? App.HeightInPixels;
+				var width = target.WidthInPixels;
+				var height = target.HeightInPixels;
 				projection = Matrix.CreatePerspectiveFieldOfView(MathF.PI / 4.0f * fovMultiplier, width / (float)height, nearPlane, farPlane);
 			}
 			return projection.Value;

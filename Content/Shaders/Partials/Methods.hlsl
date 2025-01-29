@@ -10,7 +10,7 @@ float Map(float value, float min1, float max1, float min2, float max2)
 	return perc * (max2 - min2) + min2;
 }
 
-vec3 TransformNormal(vec3 normal, mat4 transform)
+float3 TransformNormal(float3 normal, float4x4 transform)
 {
-	return normalize(transpose(inverse(mat3(transform))) * normal);
+	return normalize(mul(transpose((float3x3)transform), normal));
 }

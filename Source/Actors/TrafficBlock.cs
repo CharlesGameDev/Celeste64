@@ -26,7 +26,7 @@ public class TrafficBlock(Vec3 end) : Solid
 	public override void Update()
 	{
 		base.Update();
-		routine.Update();
+		routine.Update(Time.Delta);
 	}
 
 	private CoEnumerator Sequence()

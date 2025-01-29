@@ -29,12 +29,12 @@ public class World : Scene
 
 	private Target? postTarget;
 	private readonly Material postMaterial = new();
-	private readonly Batcher batch = new();
+	private readonly Batcher batch;
 	private readonly List<Skybox> skyboxes = [];
 	private readonly SpriteRenderer spriteRenderer = new();
 
 	// Pause Menu, only drawn when actually paused
-	private readonly Menu pauseMenu = new();
+	private readonly Menu pauseMenu;
 	private AudioHandle pauseSnapshot;
 	
 	// makes the Strawberry UI wiggle when one is collected
@@ -64,10 +64,13 @@ public class World : Scene
 	public World(EntryInfo entry)
 	{
 		Entry = entry;
+		batch = new(GraphicsDevice);
+		pauseMenu = new(Controls);
 
 		var stopwatch = Stopwatch.StartNew();
 		var map = Assets.Maps[entry.Map];
 
+		Camera.Target = Game.Window;
 		Camera.NearPlane = 20;
 		Camera.FarPlane = 800;
 		Camera.FOVMultiplier = 1;
@@ -77,15 +80,15 @@ public class World : Scene
 
 		// setup pause menu
 		{
-			Menu optionsMenu = new Menu();
+			Menu optionsMenu = new Menu(Controls);
 			optionsMenu.Title = Loc.Str("OptionsTitle");
-			optionsMenu.Add(new Menu.Toggle(Loc.Str("OptionsFullscreen"), Save.Instance.ToggleFullscreen, () => Save.Instance.Fullscreen));
+			optionsMenu.Add(new Menu.Toggle(Loc.Str("OptionsFullscreen"), () => Save.Instance.ToggleFullscreen(Game), () => Save.Instance.Fullscreen));
 			optionsMenu.Add(new Menu.Toggle(Loc.Str("OptionsZGuide"), Save.Instance.ToggleZGuide, () => Save.Instance.ZGuide));
 			optionsMenu.Add(new Menu.Toggle(Loc.Str("OptionsTimer"), Save.Instance.ToggleTimer, () => Save.Instance.SpeedrunTimer));
 			optionsMenu.Add(new Menu.MultiSelect<Save.InvertCameraOptions>(Loc.Str("OptionsInvertCamera"), Save.Instance.SetCameraInverted, () => Save.Instance.InvertCamera));
 			optionsMenu.Add(new Menu.Spacer());
-			optionsMenu.Add(new Menu.Slider(Loc.Str("OptionsBGM"), 0, 10, () => Save.Instance.MusicVolume, Save.Instance.SetMusicVolume));
-			optionsMenu.Add(new Menu.Slider(Loc.Str("OptionsSFX"), 0, 10, () => Save.Instance.SfxVolume, Save.Instance.SetSfxVolume));
+			optionsMenu.Add(new Menu.Slider(Loc.Str("OptionsBGM"), 0, 10, () => Save.Instance.MusicVolume, (i) => Save.Instance.SetMusicVolume(Game, i)));
+			optionsMenu.Add(new Menu.Slider(Loc.Str("OptionsSFX"), 0, 10, () => Save.Instance.SfxVolume, (i) => Save.Instance.SetSfxVolume(Game, i)));
 
 			pauseMenu.Title = Loc.Str("PauseTitle");
             pauseMenu.Add(new Menu.Option(Loc.Str("PauseResume"), () => SetPaused(false)));
@@ -380,7 +383,7 @@ public class World : Scene
 			}
 			else
 			{
-				pauseMenu.Update();
+				pauseMenu.Update(Time);
 			}
 		}
 
@@ -419,7 +422,7 @@ public class World : Scene
 		var box = new BoundingBox(Vec3.Min(p0, p1), Vec3.Max(p0, p1)).Inflate(1);
 
 		var solids = Pool.Get<List<Solid>>();
-		SolidGrid.Query(solids, new Rect(box.Min.XY(), box.Max.XY()));
+		SolidGrid.Query(solids, Rect.Between(box.Min.XY(), box.Max.XY()));
 
 		foreach (var solid in solids)
 		{
@@ -636,7 +639,7 @@ public class World : Scene
 		target.Clear(0x444c83, 1, 0, ClearMask.All);
 
 		// create render state
-		RenderState state = new();
+		RenderState state = new(GraphicsDevice, Time);
 		{
 			state.Camera = Camera;
 			state.ModelMatrix = Matrix.Identity;
@@ -734,15 +737,16 @@ public class World : Scene
 		}
 
 		// strawberry collect effect
-		if (Camera.Target != null && models.Any((it) => it.Model.Flags.Has(ModelFlags.StrawberryGetEffect)))
+		if (models.Any((it) => it.Model.Flags.Has(ModelFlags.StrawberryGetEffect)))
 		{
 			var img = Assets.Subtextures["splash"];
 			var orig = new Vec2(img.Width, img.Height) / 2;
+			var bounds = new Rect(0, 0, Camera.Target.WidthInPixels, Camera.Target.HeightInPixels);
 
 			Camera.Target.Clear(Color.Black, 1, 0, ClearMask.Depth);
 
-			batch.Rect(Camera.Target.Bounds, Color.Black * 0.90f);
-			batch.Image(img, Camera.Target.Bounds.Center, orig, Vec2.One, 0, Color.White);
+			batch.Rect(bounds, Color.Black * 0.90f);
+			batch.Image(img, bounds.Center, orig, Vec2.One, 0, Color.White);
 			batch.Render(Camera.Target);
 			batch.Clear();
 
@@ -753,7 +757,7 @@ public class World : Scene
 
 		// ui
 		{
-			batch.SetSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
+			batch.PushSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 			var bounds = new Rect(0, 0, target.Width, target.Height);
 			var font = Language.Current.SpriteFont;
 
@@ -811,7 +815,7 @@ public class World : Scene
 
 			// overlay
 			{
-				var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Duration.TotalSeconds) * 0.05f;
+				var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Elapsed.TotalSeconds) * 0.05f;
 
 				batch.PushBlend(BlendMode.Add);
 				batch.Image(Assets.Textures["overworld/overlay"], 
@@ -821,6 +825,7 @@ public class World : Scene
 				batch.PopBlend();
 			}
 
+			batch.PopSampler();
 			batch.Render(Camera.Target);
 			batch.Clear();
 		}
@@ -832,33 +837,31 @@ public class World : Scene
 	private void ApplyPostEffects()
 	{
 		// perform post processing effects
-		if (Camera.Target != null)
+		if (Camera.Target is Target target)
 		{
-			if (postTarget == null || postTarget.Width < Camera.Target.Width || postTarget.Height < Camera.Target.Height)
+			if (postTarget == null || postTarget.Width < target.Width || postTarget.Height < target.Height)
 			{
 				postTarget?.Dispose();
-				postTarget = new(Camera.Target.Width, Camera.Target.Height);
+				postTarget = new(GraphicsDevice, target.Width, target.Height);
 			}
 			postTarget.Clear(Color.Black);
 
-			var postCam = Camera with { Target = postTarget };
-
 			// apply post fx
-			postMaterial.SetShader(Assets.Shaders["Edge"]);
-            if (postMaterial.Shader?.Has("u_depth") ?? false)
-			    postMaterial.Set("u_depth", Camera.Target.Attachments[1]);
-            if (postMaterial.Shader?.Has("u_pixel") ?? false)
-			    postMaterial.Set("u_pixel", new Vec2(1.0f / postCam.Target.Width, 1.0f / postCam.Target.Height));
-            if (postMaterial.Shader?.Has("u_edge") ?? false)
-			    postMaterial.Set("u_edge", new Color(0x110d33));
+			postMaterial.Shader = Assets.Shaders["Edge"];
+			postMaterial.Fragment.Samplers[1] = new(target.Attachments[1], new(TextureFilter.Nearest, TextureWrap.Clamp, TextureWrap.Clamp));
+			postMaterial.Fragment.SetUniformBuffer(new UniformBuffers.EdgeFragment()
+			{
+				Pixel = new Vec2(1.0f / postTarget.Width, 1.0f / postTarget.Height),
+				Edge = new Color(0x110d33).ToVector4()
+			});
 			batch.PushMaterial(postMaterial);
-			batch.Image(Camera.Target.Attachments[0], Color.White);
+			batch.Image(target.Attachments[0], Color.White);
 			batch.Render(postTarget);
 			batch.Clear();
 
 			// draw post back to the gameplay
 			batch.Image(postTarget, Color.White);
-			batch.Render(Camera.Target);
+			batch.Render(target);
 			batch.Clear();
 		}
 	}

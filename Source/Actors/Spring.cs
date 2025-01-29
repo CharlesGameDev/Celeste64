@@ -21,7 +21,7 @@ public class Spring : Attacher, IHaveModels, IPickup
 
 	public override void Update()
 	{
-		Model.Update();
+		Model.Update(Time);
 
 		if (tCooldown > 0)
 		{

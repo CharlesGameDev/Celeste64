@@ -6,10 +6,10 @@ namespace Celeste64;
 
 public class Language
 {
+	public record struct Line(string Face, string Text, string Voice);
+
 	private static readonly Language EmptyLanguage = new() { Font = "Renogare" };
 	private static readonly List<Line> EmptyLines = [];
-
-	public record struct Line(string Face, string Text, string Voice);
 
 	public string ID { get; set; } = string.Empty;
 	public string Label { get; set; } = string.Empty;
@@ -34,7 +34,7 @@ public class Language
 		return EmptyLines;
 	}
 
-	public void Use()
+	public void Use(GraphicsDevice gfx)
 	{
 		if (spriteFont != null)
 			return;
@@ -70,7 +70,7 @@ public class Language
 			}
 		}
 
-		spriteFont = new SpriteFont(Assets.Fonts[Font], Assets.FontSize, codepoints.ToArray());
+		spriteFont = new SpriteFont(gfx, Assets.Fonts[Font], Assets.FontSize, codepoints.ToArray());
 	}
 
 	public void Absorb(Language other)

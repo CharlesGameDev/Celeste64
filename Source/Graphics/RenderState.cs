@@ -1,9 +1,12 @@
 
 namespace Celeste64;
 
-public struct RenderState
+public struct RenderState(GraphicsDevice gfx, in Time time)
 {
-	public Camera Camera;
+	public readonly GraphicsDevice GraphicsDevice = gfx;
+	public readonly Time Time = time;
+
+	public Camera Camera = new();
 	public Matrix ModelMatrix;
 	public bool Silhouette;
 	public Vec3 SunDirection;
@@ -19,14 +22,20 @@ public struct RenderState
 		if (mat.Shader == null)
 			return;
 
-		mat.Model = localTransformation * ModelMatrix;
-		mat.MVP = mat.Model * Camera.ViewProjection;
-		mat.NearPlane = Camera.NearPlane;
-		mat.FarPlane = Camera.FarPlane;
-		mat.Silhouette = Silhouette;
-		mat.Time = (float)Time.Duration.TotalSeconds;
-		mat.SunDirection = SunDirection;
-		mat.VerticalFogColor = VerticalFogColor;
-		mat.Cutout = CutoutMode;
+		var vertex = mat.VertexUniforms;
+		vertex.Model = localTransformation * ModelMatrix;
+		vertex.MVP = vertex.Model * Camera.ViewProjection;
+		Matrix.Invert(vertex.Model, out vertex.ModelInverse);
+		mat.VertexUniforms = vertex;
+
+		var fragment = mat.FragmentUniforms;
+		fragment.Near = Camera.NearPlane;
+		fragment.Far = Camera.FarPlane;
+		fragment.Silhouette = Silhouette ? 1 : 0;
+		fragment.Time = (float)Time.Elapsed.TotalSeconds;
+		fragment.Sun = new Vec4(SunDirection, 0);
+		fragment.VerticalFogColor = VerticalFogColor;
+		fragment.Cutout = CutoutMode ? 1 : 0;
+		mat.FragmentUniforms = fragment;
 	}
 }

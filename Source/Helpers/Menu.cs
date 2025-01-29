@@ -1,7 +1,7 @@
 
 namespace Celeste64;
 
-public class Menu
+public class Menu(Controls controls)
 {
 	public const float Spacing = 4 * Game.RelativeScale;
 	public const float SpacerHeight = 12 * Game.RelativeScale;
@@ -130,12 +130,14 @@ public class Menu
 		}
 	}
 
+	public readonly Controls Controls = controls;
 	public int Index;
 	public string Title = string.Empty;
 	public bool Focused = true;
 
 	private readonly List<Item> items = [];
 	private readonly Stack<Menu> submenus = [];
+	private Time time;
 
 	public string UpSound = Sfx.ui_move;
 	public string DownSound = Sfx.ui_move;
@@ -177,8 +179,8 @@ public class Menu
 			return size;
 		}
 	}
-	
-	public Menu Add(Item item)
+
+    public Menu Add(Item item)
 	{
 		items.Add(item);
 		return this;
@@ -201,9 +203,9 @@ public class Menu
 			var was = Index;
 			var step = 0;
 
-			if (Controls.Menu.Vertical.Positive.Pressed)
+			if (Controls.Menu.Down.Pressed)
 				step = 1;
-			if (Controls.Menu.Vertical.Negative.Pressed)
+			if (Controls.Menu.Up.Pressed)
 				step = -1;
 	
 			Index += step;
@@ -214,9 +216,9 @@ public class Menu
 			if (was != Index)
 				Audio.Play(step < 0 ? UpSound : DownSound);
 	
-			if (Controls.Menu.Horizontal.Negative.Pressed)
+			if (Controls.Menu.Left.Pressed)
 				items[Index].Slide(-1);
-			if (Controls.Menu.Horizontal.Positive.Pressed)
+			if (Controls.Menu.Right.Pressed)
 				items[Index].Slide(1);
 	
 			if (Controls.Confirm.Pressed && items[Index].Pressed())
@@ -224,8 +226,10 @@ public class Menu
 		}
 	}
 
-	public void Update()
+	public void Update(in Time time)
 	{
+		this.time = time;
+
 		if (Focused)
 		{
 			CurrentMenu.HandleInput();
@@ -271,7 +275,7 @@ public class Menu
 	
 			var text = items[i].Label;
 			var justify = new Vec2(0.5f, 0);
-			var color = Index == i && Focused ? (Time.BetweenInterval(0.1f) ? 0x84FF54 : 0xFCFF59) : Color.White;
+			var color = Index == i && Focused ? (time.BetweenInterval(0.1f) ? 0x84FF54 : 0xFCFF59) : Color.White;
 			
 			UI.Text(batch, text, position, justify, color);
 	

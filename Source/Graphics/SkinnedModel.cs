@@ -6,15 +6,14 @@ namespace Celeste64;
 
 public class SkinnedModel : Model
 {
+	public const int SkinMatrixCount = 32;
+
 	public readonly SkinnedTemplate Template;
 	public readonly SharpGLTF.Runtime.SceneInstance Instance;
 	public static readonly Matrix BaseTranslation = Matrix.CreateRotationX(MathF.PI / 2);
 
     public int AnimationIndex;
 	public float Rate = 1.0f;
-
-	private const int SkinMatrixCount = 32;
-	private readonly Matrix[] transformSkin = new Matrix[SkinMatrixCount];
 
 	private struct Playing
 	{
@@ -152,7 +151,7 @@ public class SkinnedModel : Model
 		return it;
 	}
 
-	public void Update()
+	public void Update(in Time time)
 	{
 		// get blend duration
 		var blendDuration = 0.0f;
@@ -164,7 +163,7 @@ public class SkinnedModel : Model
 		{
 			var it = playing[i];
 
-			it.Time += Rate * Time.Delta;
+			it.Time += Rate * time.Delta;
 			if (it.Time >= it.Duration)
 			{
 				if (it.Loops)
@@ -174,7 +173,7 @@ public class SkinnedModel : Model
 			}
 
 			if (blendDuration > 0)
-				it.Blend = Calc.Approach(it.Blend, (i == playing.Count - 1 ? 1 : 0), Time.Delta / blendDuration);
+				it.Blend = Calc.Approach(it.Blend, (i == playing.Count - 1 ? 1 : 0), time.Delta / blendDuration);
 			
 			playing[i] = it;
 		}
@@ -221,6 +220,8 @@ public class SkinnedModel : Model
 
     public override void Render(ref RenderState state)
 	{
+		var jointUniformBuffer = new UniformBuffers.DefaultJoints();
+
 		for (int i = 0; i < Instance.Count; i ++)
 		{
 			var drawable = Instance[i];
@@ -233,20 +234,17 @@ public class SkinnedModel : Model
 					var mat = Materials[primitive.Material];
 
 					state.ApplyToMaterial(mat, statXform.WorldMatrix * BaseTranslation);
-					
-					if (mat.Shader != null && 
-						mat.Shader.Has("u_jointMult"))
-						mat.Set("u_jointMult", 0.0f);
+					mat.VertexUniforms = mat.VertexUniforms with { JointsMult = 0 };
 
-                    DrawCommand cmd = new(state.Camera.Target, Template.Mesh, mat)
+                    state.GraphicsDevice.Draw(new(state.Camera.Target, Template.Mesh, mat)
                     {
                         MeshIndexStart = primitive.Index,
                         MeshIndexCount = primitive.Count,
-						DepthMask = state.DepthMask,
+						DepthTestEnabled = true,
+						DepthWriteEnabled = state.DepthMask,
                         DepthCompare = state.DepthCompare,
-                        CullMode = CullMode.Back
-                    };
-                    cmd.Submit();
+                        CullMode = CullMode.Front
+                    });
 					state.Calls++;
 					state.Triangles += primitive.Count / 3;
 				}
@@ -257,27 +255,23 @@ public class SkinnedModel : Model
 				foreach (var primitive in meshPart)
 				{
 					var mat = Materials[primitive.Material];
-
 					state.ApplyToMaterial(mat, BaseTranslation);
-					
-					if (mat.Shader != null && 
-						mat.Shader.Has("u_jointMat"))
-					{
-						for (int j = 0, n = Math.Min(SkinMatrixCount, skinXform.SkinMatrices.Count); j < n; j ++)
-							transformSkin[j] = skinXform.SkinMatrices[j];
-						mat.Set("u_jointMult", 1.0f);
-						mat.Set("u_jointMat", transformSkin.AsSpan());
-					}
+					var uniforms = mat.VertexUniforms with { JointsMult = 1.0f };
+					mat.VertexUniforms = uniforms;
 
-                    DrawCommand cmd = new(state.Camera.Target, Template.Mesh, mat)
+					for (int j = 0, n = Math.Min(SkinMatrixCount, skinXform.SkinMatrices.Count); j < n; j ++)
+						jointUniformBuffer[j] = skinXform.SkinMatrices[j];
+					mat.Vertex.SetUniformBuffer(jointUniformBuffer, 1);
+
+                    state.GraphicsDevice.Draw(new(state.Camera.Target, Template.Mesh, mat)
                     {
                         MeshIndexStart = primitive.Index,
                         MeshIndexCount = primitive.Count,
-						DepthMask = state.DepthMask,
+						DepthTestEnabled = true,
+						DepthWriteEnabled = state.DepthMask,
                         DepthCompare = state.DepthCompare,
-                        CullMode = CullMode.Back
-                    };
-                    cmd.Submit();
+                        CullMode = CullMode.Front
+                    });
 					state.Calls++;
 					state.Triangles += primitive.Count / 3;
 				}

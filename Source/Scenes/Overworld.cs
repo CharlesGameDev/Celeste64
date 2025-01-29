@@ -17,12 +17,12 @@ public class Overworld : Scene
 		public float HighlightEase;
 		public float SelectionEase;
 
-		public Entry(LevelInfo level)
+		public Entry(Controls controls, GraphicsDevice gfx, LevelInfo level)
 		{
 			Level = level;
-			Target = new Target(CardWidth, CardHeight);
+			Target = new Target(gfx, CardWidth, CardHeight);
 			Image = new(Assets.Textures[level.Preview]);
-			Menu = new();
+			Menu = new(controls);
 			Menu.UpSound = Sfx.main_menu_roll_up;
 			Menu.DownSound = Sfx.main_menu_roll_down;
 
@@ -43,7 +43,7 @@ public class Overworld : Scene
 			const float Padding = 16 * Game.RelativeScale;
 
 			Target.Clear(Color.Transparent);
-			batch.SetSampler(new(TextureFilter.Linear, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
+			batch.PushSampler(new(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 
 			var bounds = Target.Bounds;
 			var font = Language.Current.SpriteFont;
@@ -114,6 +114,7 @@ public class Overworld : Scene
 					Color.White * shine * 0.30f);
 			}
 
+			batch.PopSampler();
 			batch.Render(Target);
 		}
 	}
@@ -133,28 +134,32 @@ public class Overworld : Scene
 	private float cameraCloseUpEase = 0;
 	private Vec2 wobble = new Vec2(0, -1);
 	private readonly List<Entry> entries = [];
-	private readonly Batcher batch = new();
-	private readonly Mesh mesh = new();
+	private readonly Batcher batch;
+	private readonly Mesh<SpriteVertex> mesh;
 	private readonly Material material = new(Assets.Shaders["Sprite"]);
-	private readonly Menu restartConfirmMenu = new();
+	private readonly Menu restartConfirmMenu;
 
 	public Overworld(bool startOnLastSelected)
 	{
 		Music = "event:/music/mus_title";
+
+		batch = new(GraphicsDevice);
+		mesh = new(GraphicsDevice);
+		restartConfirmMenu = new(Controls);
 		
 		foreach (var level in Assets.Levels)
-			entries.Add(new(level));
+			entries.Add(new(Controls, GraphicsDevice, level));
 
 		var cardWidth = CardWidth / 6.0f / Game.RelativeScale;
 		var cardHeight = CardHeight / 6.0f / Game.RelativeScale;
 
-		mesh.SetVertices<SpriteVertex>([
-			new(new Vec3(-cardWidth, 0, -cardHeight) / 2, new Vec2(0, 0), Color.White),
-			new(new Vec3(cardWidth, 0, -cardHeight) / 2, new Vec2(1, 0), Color.White),
-			new(new Vec3(cardWidth, 0, cardHeight) / 2, new Vec2(1, 1), Color.White),
-			new(new Vec3(-cardWidth, 0, cardHeight) / 2, new Vec2(0, 1), Color.White),
+		mesh.SetVertices([
+			new(new Vec3(-cardWidth, 0, cardHeight) / 2, new Vec2(0, 0), Color.White),
+			new(new Vec3(cardWidth, 0, cardHeight) / 2, new Vec2(1, 0), Color.White),
+			new(new Vec3(cardWidth, 0, -cardHeight) / 2, new Vec2(1, 1), Color.White),
+			new(new Vec3(-cardWidth, 0, -cardHeight) / 2, new Vec2(0, 1), Color.White),
 		]);
-		mesh.SetIndices<int>([0, 1, 2, 0, 2, 3]);
+		mesh.SetIndices([0, 1, 2, 0, 2, 3]);
 
 		restartConfirmMenu.Add(new Menu.Option(Loc.Str("Cancel")));
 		restartConfirmMenu.Add(new Menu.Option(Loc.Str("RestartLevel")));
@@ -190,7 +195,7 @@ public class Overworld : Scene
 			Calc.Approach(ref it.SelectionEase, index == i && (state == States.Selected || state == States.Restarting) ? 1.0f : 0.0f, Time.Delta * 4.0f);
 
 			if (it.SelectionEase >= 0.50f && state == States.Selected)
-				it.Menu.Update();
+				it.Menu.Update(Time);
 			it.Menu.Focused = state == States.Selected;
 		}
 
@@ -200,16 +205,10 @@ public class Overworld : Scene
 		if (state == States.Selecting)
 		{
 			var was = index;
-			if (Controls.Menu.Horizontal.Negative.Pressed)
-			{
-				Controls.Menu.ConsumePress();
+			if (Controls.Menu.Left.ConsumePress())
 				index--;
-			}
-			if (Controls.Menu.Horizontal.Positive.Pressed)
-			{
-				Controls.Menu.ConsumePress();
+			if (Controls.Menu.Right.ConsumePress())
 				index++;
-			}
 			index = Calc.Clamp(index, 0, entries.Count - 1);
 
 			if (was != index)
@@ -258,7 +257,7 @@ public class Overworld : Scene
 		}
 		else if (state == States.Restarting)
 		{
-			restartConfirmMenu.Update();
+			restartConfirmMenu.Update(Time);
 
 			if (Controls.Confirm.ConsumePress())
 			{
@@ -304,7 +303,7 @@ public class Overworld : Scene
 		}
 
 		// draw each entry to the screen
-		var camera = new Camera
+		var camera = new Camera()
 		{
 			Target = target,
 			Position = new Vec3(0, -100 + 30 * Ease.Cube.In(cameraCloseUpEase), 0),
@@ -328,31 +327,24 @@ public class Overworld : Scene
 				Matrix.CreateRotationZ((state == States.Entering ? -1 : 1) * rotation * MathF.PI) *
 				Matrix.CreateTranslation(position);
 
-            if (material.Shader?.Has("u_matrix") ?? false)
-			    material.Set("u_matrix", matrix * camera.ViewProjection);
-            if (material.Shader?.Has("u_near") ?? false)
-			    material.Set("u_near", camera.NearPlane);
-            if (material.Shader?.Has("u_far") ?? false)
-			    material.Set("u_far", camera.FarPlane);
-            if (material.Shader?.Has("u_texture") ?? false)
-			    material.Set("u_texture", it.Target);
-            if (material.Shader?.Has("u_texture_sampler") ?? false)
-			    material.Set("u_texture_sampler", new TextureSampler(TextureFilter.Linear, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
+			material.Vertex.SetUniformBuffer(new UniformBuffers.SpriteVertex(matrix * camera.ViewProjection));
+			material.Fragment.SetUniformBuffer(new UniformBuffers.SpriteFragment(camera));
+			material.Fragment.Samplers[0] = new(it.Target, new TextureSampler(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 
-			var cmd = new DrawCommand(target, mesh, material)
+			GraphicsDevice.Draw(new DrawCommand(target, mesh, material)
 			{
-				DepthMask = true,
+				DepthTestEnabled = true,
+				DepthWriteEnabled = true,
 				DepthCompare = DepthCompare.Less,
 				CullMode = CullMode.None
-			};
-			cmd.Submit();
+			});
 		}
 
 		// overlay
 		{
-			batch.SetSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
+			batch.PushSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 			var bounds = new Rect(0, 0, target.Width, target.Height);
-			var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Duration.TotalSeconds) * 0.05f;
+			var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Elapsed.TotalSeconds) * 0.05f;
 
 			// confirmation
 			if (state == States.Restarting)
@@ -380,9 +372,9 @@ public class Overworld : Scene
 				var cancelPrompt = Loc.Str(state == States.Selecting ? "back" : "cancel");
 				var at = bounds.BottomRight + new Vec2(-16, -4) * Game.RelativeScale + new Vec2(0, -UI.PromptSize);
 				var width = 0.0f;
-				UI.Prompt(batch, Controls.Cancel, cancelPrompt, at, out width, 1.0f);
+				UI.Prompt(batch, Controls.GetPrompt(Controls.Cancel), cancelPrompt, at, out width, 1.0f);
 				at.X -= width + 8 * Game.RelativeScale;
-				UI.Prompt(batch, Controls.Confirm, Loc.Str("confirm"), at, out _, 1.0f);
+				UI.Prompt(batch, Controls.GetPrompt(Controls.Confirm), Loc.Str("confirm"), at, out _, 1.0f);
 
 				// show version number on Overworld as well
                 UI.Text(batch, Game.VersionString, bounds.BottomLeft + new Vec2(4, -4) * Game.RelativeScale, new Vec2(0, 1), Color.White * 0.25f);
@@ -394,6 +386,8 @@ public class Overworld : Scene
 				batch.Rect(bounds, Color.White * Ease.Cube.In(cameraCloseUpEase));
 				batch.PopBlend();
 			}
+
+			batch.PopSampler();
 			batch.Render(target);
 			batch.Clear();
 		}

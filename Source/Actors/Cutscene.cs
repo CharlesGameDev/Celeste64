@@ -195,7 +195,7 @@ public class Cutscene : Actor, IHaveUI
 
 	public override void Update()
 	{
-		Routine.Update();
+		Routine.Update(Time.Delta);
 		timer += Time.Delta;
 
 		if (!Routine.IsRunning)

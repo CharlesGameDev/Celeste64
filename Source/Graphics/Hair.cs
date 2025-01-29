@@ -14,7 +14,7 @@ public class Hair : Model
 	public float Roundness = 0;
 	public float ForwardOffsetPerNode = 0.50f;
 
-	private readonly Mesh mesh = new();
+	private readonly Mesh<Vertex> mesh = new(Game.Instance.GraphicsDevice);
 	private readonly List<Vertex> sphereVertices = [];
 	private readonly List<int> sphereIndices = [];
 	private readonly List<Vertex> hairVertices = [];
@@ -48,10 +48,10 @@ public class Hair : Model
 
 	}
 
-	public void Update(in Matrix positionTransform)
+	public void Update(in Time time, in Matrix positionTransform)
 	{
 		modified = true;
-		wave += Time.Delta * 4.0f;
+		wave += time.Delta * 4.0f;
 		OffsetPerNode = Forward * ForwardOffsetPerNode + new Vec3(0, 0, -1 * (1 - Roundness));
 		Origin = new Vec3(0, 1.0f, -.4f);
 
@@ -141,8 +141,8 @@ public class Hair : Model
 				hairIndices.Add(index + ind);
 		}
 
-		mesh.SetVertices<Vertex>(CollectionsMarshal.AsSpan(hairVertices));
-		mesh.SetIndices<int>(CollectionsMarshal.AsSpan(hairIndices));
+		mesh.SetVertices(CollectionsMarshal.AsSpan(hairVertices));
+		mesh.SetIndices(CollectionsMarshal.AsSpan(hairIndices));
 	}
 
 	public override void Render(ref RenderState state)
@@ -153,17 +153,20 @@ public class Hair : Model
 		state.ApplyToMaterial(Materials[0], Matrix.Identity);
 		state.ModelMatrix = was;
 
-		Materials[0].Color = Color;
-		Materials[0].SilhouetteColor = Color;
+		Materials[0].FragmentUniforms = Materials[0].FragmentUniforms with
+		{
+			Color = Color,
+			SilhouetteColor = Color
+		};
 
 		// draw hair
-		var call = new DrawCommand(state.Camera.Target, mesh, Materials[0])
+		state.GraphicsDevice.Draw(new DrawCommand(state.Camera.Target, mesh, Materials[0])
 		{
 			DepthCompare = state.DepthCompare,
-			DepthMask = state.DepthMask,
-			CullMode = CullMode.Front,
-		};
-		call.Submit();
+			DepthTestEnabled = true,
+			DepthWriteEnabled = state.DepthMask,
+			CullMode = CullMode.Back,
+		});
 		state.Calls++;
 		state.Triangles += mesh.IndexCount / 3;
 	}

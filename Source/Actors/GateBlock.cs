@@ -31,7 +31,7 @@ public class GateBlock(Vec3 end) : Solid
 		}
 		else if (routine.IsRunning)
 		{
-			routine.Update();
+			routine.Update(Time.Delta);
 		}
 	}
 

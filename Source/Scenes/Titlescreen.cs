@@ -3,7 +3,7 @@ namespace Celeste64;
 
 public class Titlescreen : Scene
 {
-	private readonly Batcher batch = new();
+	private readonly Batcher batch;
 	private readonly SkinnedModel model;
 	private float easing = 0;
 	private float inputDelay = 5.0f;
@@ -11,6 +11,7 @@ public class Titlescreen : Scene
 
 	public Titlescreen()
 	{
+		batch = new(GraphicsDevice);
 		model = new SkinnedModel(Assets.Models["logo"]);
 		Music = "event:/music/mus_title";
 	}
@@ -33,9 +34,7 @@ public class Titlescreen : Scene
 		}
 
 		if (Controls.Cancel.Pressed)
-		{
-			App.Exit();
-		}
+			Game.Exit();
     }
 
     public override void Render(Target target)
@@ -47,7 +46,7 @@ public class Titlescreen : Scene
 
 		wobble += (Controls.Camera.Value - wobble) * (1 - MathF.Pow(.1f, Time.Delta));
 
-		var camera = new Camera
+		var camera = new Camera()
 		{
 			Target = target,
 			Position = Vec3.Lerp(camFrom, camTo, Ease.Cube.Out(easing)),
@@ -56,7 +55,7 @@ public class Titlescreen : Scene
 			FarPlane = 300
 		};
 
-		var state = new RenderState()
+		var state = new RenderState(GraphicsDevice, Time)
 		{
 			Camera = camera,
 			ModelMatrix = 
@@ -79,9 +78,9 @@ public class Titlescreen : Scene
 
 		// overlay
 		{
-			batch.SetSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.ClampToEdge, TextureWrap.ClampToEdge));
+			batch.PushSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 			var bounds = new Rect(0, 0, target.Width, target.Height);
-			var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Duration.TotalSeconds) * 0.05f;
+			var scroll = -new Vec2(1.25f, 0.9f) * (float)(Time.Elapsed.TotalSeconds) * 0.05f;
 
 			batch.PushBlend(BlendMode.Add);
 			batch.PushSampler(new TextureSampler(TextureFilter.Linear, TextureWrap.Repeat, TextureWrap.Repeat));
@@ -99,9 +98,9 @@ public class Titlescreen : Scene
 			if (inputDelay <= 0)
 			{
 				var at = bounds.BottomRight + new Vec2(-16, -4) * Game.RelativeScale + new Vec2(0, -UI.PromptSize);
-				UI.Prompt(batch, Controls.Cancel, Loc.Str("Exit"), at, out var width, 1.0f);
+				UI.Prompt(batch, Controls.GetPrompt(Controls.Cancel), Loc.Str("Exit"), at, out var width, 1.0f);
 				at.X -= width + 8 * Game.RelativeScale;
-				UI.Prompt(batch, Controls.Confirm, Loc.Str("Confirm"), at, out _, 1.0f);
+				UI.Prompt(batch, Controls.GetPrompt(Controls.Confirm), Loc.Str("Confirm"), at, out _, 1.0f);
 				UI.Text(batch, Game.VersionString, bounds.BottomLeft + new Vec2(4, -4) * Game.RelativeScale, new Vec2(0, 1), Color.White * 0.25f);
 			}
 
@@ -112,6 +111,7 @@ public class Titlescreen : Scene
 				batch.PopBlend();
 			}
 
+			batch.PopSampler();
 			batch.Render(target);
 			batch.Clear();
 		}

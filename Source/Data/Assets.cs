@@ -1,12 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Celeste64;
 
-public static class Assets
+public static partial class Assets
 {
 	public const float FontSize = Game.RelativeScale * 16;
 	public const string AssetFolder = "Content";
@@ -42,7 +41,7 @@ public static class Assets
 	public static readonly Dictionary<string, Language> Languages = new(StringComparer.OrdinalIgnoreCase);
 	public static List<LevelInfo> Levels { get; private set; } = [];
 
-	public static void Load()
+	public static void Load(GraphicsDevice gfx)
 	{
 		var timer = Stopwatch.StartNew();
 
@@ -142,13 +141,11 @@ public static class Assets
 
 		// load glsl shaders
 		var shadersPath = Path.Join(ContentPath, "Shaders");
-		foreach (var file in Directory.EnumerateFiles(shadersPath, "*.glsl"))
+		foreach (var file in Directory.EnumerateFiles(shadersPath, "*.hlsl"))
 		{
-			if (LoadShader(file) is Shader shader)
-			{
-				shader.Name = GetResourceName(shadersPath, file);
+			var name = GetResourceName(shadersPath, file);
+			if (LoadShader(gfx, name) is Shader shader)
 				Shaders[shader.Name] = shader;
-			}
 		}
 
 		// load font files
@@ -175,7 +172,7 @@ public static class Assets
 			foreach (var it in result.Pages)
 			{
 				it.Premultiply();
-				pages.Add(new Texture(it));
+				pages.Add(new Texture(gfx, it));
 			}
 
 			foreach (var it in result.Entries)
@@ -187,12 +184,12 @@ public static class Assets
 			foreach (var task in tasks)
 				task.Wait();
 			foreach (var (name, img) in images)
-				Textures.Add(name, new Texture(img) { Name = name });
+				Textures.Add(name, new Texture(gfx, img, name: name));
 			foreach (var map in maps)
 				Maps[map.Name] = map;
 			foreach (var (name, model) in models)
 			{
-				model.ConstructResources();
+				model.ConstructResources(gfx);
 				Models[name] = model;
 			}
 			foreach (var lang in langs)
@@ -205,7 +202,7 @@ public static class Assets
 		}
 
 		// make sure the active language is ready for use
-		Language.Current.Use();
+		Language.Current.Use(gfx);
 
 		Log.Info($"Loaded Assets in {timer.ElapsedMilliseconds}ms");
 	}
@@ -218,40 +215,45 @@ public static class Assets
 		return normalized;
 	}
 
-	private static Shader? LoadShader(string file)
+	internal partial struct ShaderReflection
 	{
-		ShaderCreateInfo? data = null;
+		[JsonInclude] public int samplers;
+		[JsonInclude] public int storage_textures;
+		[JsonInclude] public int storage_buffers;
+		[JsonInclude] public int uniform_buffers;
+	}
 
-		if (File.Exists(file))
+	private static Shader? LoadShader(GraphicsDevice gfx, string name)
+	{
+		static ShaderReflection GetReflection(string file)
 		{
-			StringBuilder vertex = new();
-			StringBuilder fragment = new();
-			StringBuilder? target = null;
-			foreach (var line in File.ReadAllLines(file))
-			{
-				if (line.StartsWith("VERTEX:"))
-					target = vertex;
-				else if (line.StartsWith("FRAGMENT:"))
-					target = fragment;
-				else if (line.StartsWith("#include"))
-				{
-					var path = Path.Join(Path.GetDirectoryName(file), line[9..]);
-					if (File.Exists(path))
-						target?.Append(File.ReadAllText(path));
-					else
-						throw new Exception($"Unable to find shader include: '{path}'");
-				}
-				else
-					target?.AppendLine(line);
-			}
-
-			data = new(
-				vertexShader: vertex.ToString(),
-				fragmentShader: fragment.ToString()
-			);
+			var json = File.ReadAllText(file);
+			return JsonSerializer.Deserialize(json, AssetShaderReflectionContext.Default.ShaderReflection);
 		}
 
-		return data.HasValue ? new Shader(data.Value) : null;
+		var path = Path.Combine(ContentPath, "Shaders", "Compiled", name);
+		var vMeta = GetReflection(path + ".vertex.json");
+		var fMeta = GetReflection(path + ".fragment.json");
+		var ext = gfx.Driver.GetShaderExtension();
+		var info = new ShaderCreateInfo(
+			Vertex: new(
+				Code: File.ReadAllBytes(path + ".vertex." + ext),
+				SamplerCount: vMeta.samplers,
+				UniformBufferCount: vMeta.uniform_buffers,
+				EntryPoint: "vertex_main"
+			),
+			Fragment: new(
+				Code: File.ReadAllBytes(path + ".fragment." + ext),
+				SamplerCount: fMeta.samplers,
+				UniformBufferCount: fMeta.uniform_buffers,
+				EntryPoint: "fragment_main"
+			)
+		);
+
+		return new Shader(gfx, info, name);
 	}
 }
 
+[JsonSourceGenerationOptions(WriteIndented = true, AllowTrailingCommas = true, UseStringEnumConverter = true)]
+[JsonSerializable(typeof(Assets.ShaderReflection))]
+internal partial class AssetShaderReflectionContext : JsonSerializerContext {}

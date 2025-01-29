@@ -295,7 +295,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 		// don't do anything if dead
 		if (stateMachine.State == States.Respawn || stateMachine.State == States.Dead || stateMachine.State == States.Cutscene)
 		{
-			stateMachine.Update();
+			stateMachine.Update(Time.Delta);
 			return;
 		}
 
@@ -338,7 +338,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 		}
 
 		previousVelocity = velocity;
-		stateMachine.Update();
+		stateMachine.Update(Time.Delta);
 
 		// move and pop out
 		if (!InBubble)
@@ -490,7 +490,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 
 			Facing = Calc.AngleToVector(Calc.AngleApproach(Facing.Angle(), targetFacing.Angle(), MathF.Tau * 2 * Time.Delta));
 
-			Model.Update();
+			Model.Update(Time);
 			Model.Transform = Matrix.CreateScale(ModelScale * 3);
 
 			if (stateMachine.State != States.Feather && stateMachine.State != States.FeatherStart)
@@ -526,7 +526,7 @@ public class Player : Actor, IHaveModels, IHaveSprites, IRidePlatforms, ICastPoi
 			Hair.Squish = ModelScale;
 			Hair.Materials[0].Effects = 0;
 			Hair.Grounded = onGround;
-			Hair.Update(hairMatrix);
+			Hair.Update(Time, hairMatrix);
 		}
 
 		// trails

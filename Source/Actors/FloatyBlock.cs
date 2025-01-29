@@ -45,7 +45,7 @@ public sealed class FloatyBlock : Solid
 		Vec3 normal = diff.Normalized();
 		float vel = Vec3.Dot(Velocity, normal);
 		float old_vel = vel;
-		vel = SpringPhysics.Calculate(diff.Length(), vel, 0, 0, frequency, halflife);
+		vel = SpringPhysics.Calculate(diff.Length(), vel, 0, 0, frequency, halflife, Time.Delta);
 		Velocity += normal * (vel - old_vel);
 	}
 }

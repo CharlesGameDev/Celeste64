@@ -486,8 +486,8 @@ public class Map
 			});
 		}
 
-		model.Mesh.SetVertices<Vertex>(CollectionsMarshal.AsSpan(meshVertices));
-		model.Mesh.SetIndices<int>(CollectionsMarshal.AsSpan(meshIndices));
+		model.Mesh.SetVertices(CollectionsMarshal.AsSpan(meshVertices));
+		model.Mesh.SetIndices(CollectionsMarshal.AsSpan(meshIndices));
 
 		Pool.Return(meshVertices);
 		Pool.Return(meshIndices);

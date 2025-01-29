@@ -62,11 +62,11 @@ public unsafe sealed class StateMachine<TIndex, TEvent>
 		}
 	}
 
-	public void Update()
+	public void Update(float deltaTime)
 	{
 		if (state.HasValue)
 			update[StateToIndex(state.Value)]?.Invoke();
-		running.Update();
+		running.Update(deltaTime);
 	}
 
 	public void CallEvent(TEvent ev)

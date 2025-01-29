@@ -6,11 +6,11 @@ namespace Celeste64;
 public class SimpleModel : Model
 {
 	public record struct Part(int MaterialIndex, int IndexStart, int IndexCount);
-	public readonly Mesh Mesh = new();
+	public readonly Mesh<Vertex> Mesh = new(Game.Instance.GraphicsDevice);
 	public readonly List<Part> Parts = [];
-	public CullMode CullMode = CullMode.Back;
+	public CullMode CullMode = CullMode.Front;
 
-	public SimpleModel() { }
+	public SimpleModel() {}
 
 	public SimpleModel(List<SimpleModel> combine)
 	{
@@ -81,8 +81,8 @@ public class SimpleModel : Model
 			}
 		}
 
-		Mesh.SetVertices<Vertex>(CollectionsMarshal.AsSpan(vertices));
-		Mesh.SetIndices<int>(CollectionsMarshal.AsSpan(indices));
+		Mesh.SetVertices(CollectionsMarshal.AsSpan(vertices));
+		Mesh.SetIndices(CollectionsMarshal.AsSpan(indices));
 		Transform = Matrix.Identity;
 		Flags = ModelFlags.Terrain;
 	}
@@ -92,10 +92,7 @@ public class SimpleModel : Model
 		foreach (var mat in Materials)
 		{
 			state.ApplyToMaterial(mat, Matrix.Identity);
-
-			if (mat.Shader != null &&
-				mat.Shader.Has("u_jointMult"))
-				mat.Set("u_jointMult", 0.0f);
+			mat.VertexUniforms = mat.VertexUniforms with { JointsMult = 0 };
 		}
 
 		foreach (var segment in Parts)
@@ -103,15 +100,15 @@ public class SimpleModel : Model
 			if (segment.IndexCount <= 0 || segment.MaterialIndex < 0)
 				continue;
 
-			var call = new DrawCommand(state.Camera.Target, Mesh, Materials[segment.MaterialIndex])
+			state.GraphicsDevice.Draw(new DrawCommand(state.Camera.Target, Mesh, Materials[segment.MaterialIndex])
 			{
 				DepthCompare = state.DepthCompare,
-				DepthMask = state.DepthMask,
+				DepthTestEnabled = true,
+				DepthWriteEnabled = state.DepthMask,
 				CullMode = CullMode,
 				MeshIndexStart = segment.IndexStart,
 				MeshIndexCount = segment.IndexCount
-			};
-			call.Submit();
+			});
 			state.Calls++;
 			state.Triangles += segment.IndexCount / 3;
 		}

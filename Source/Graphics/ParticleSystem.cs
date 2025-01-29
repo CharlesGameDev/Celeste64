@@ -25,24 +25,25 @@ public class ParticleSystem
 	public float MaximumDistance = 400;
 	public readonly int MaxParticles;
 
-	private readonly List<Particle> Particles;
+	private readonly List<Particle> particles;
+	private float deltaTime;
 
 	public ParticleSystem(int maxParticles, in ParticleTheme theme)
 	{
-		Particles = new(MaxParticles = maxParticles);
+		particles = new(MaxParticles = maxParticles);
 		Theme = theme;
 	}
 
 	public void SpawnParticle(Vec3 position, Vec3 velocity, float rateMultiplier)
 	{
-		Accumulator += rateMultiplier * Theme.Rate * Time.Delta;
+		Accumulator += rateMultiplier * Theme.Rate * deltaTime;
 
 		while (Accumulator > 0)
 		{
-			if (Particles.Count >= MaxParticles)
-				Particles.RemoveAt(0);
+			if (particles.Count >= MaxParticles)
+				particles.RemoveAt(0);
 				
-			Particles.Add(new Particle() with
+			particles.Add(new Particle() with
 			{
 				Position = position,
 				Velocity = Theme.StartVelocity + velocity,
@@ -55,18 +56,20 @@ public class ParticleSystem
 		
 	public void Update(float deltaTime)
 	{
-		for (int i = Particles.Count - 1; i >= 0; i--)
+		this.deltaTime = deltaTime;
+
+		for (int i = particles.Count - 1; i >= 0; i--)
 		{
-			var it = Particles[i];
+			var it = particles[i];
 
 			it.Life -= deltaTime;
 			it.Velocity += Theme.Gravity * deltaTime;
 			it.Position += it.Velocity * deltaTime;
 
 			if (it.Life <= 0)
-				Particles.RemoveAt(i);
+				particles.RemoveAt(i);
 			else	
-				Particles[i] = it;
+				particles[i] = it;
 		}
 	}
 
@@ -75,12 +78,12 @@ public class ParticleSystem
 		if ((world.Camera.Position - source).LengthSquared() > MaximumDistance * MaximumDistance)
 			return;
 
-		for (int i = Particles.Count - 1; i >= 0; i--)
+		for (int i = particles.Count - 1; i >= 0; i--)
 		{
-			if (Particles[i].Life <= 0)
+			if (particles[i].Life <= 0)
 				continue;
 				
-			populate.Add(Sprite.CreateBillboard(world, Particles[i].Position, Theme.Sprite, Theme.Size * Particles[i].Life / Theme.Life, Color.White));
+			populate.Add(Sprite.CreateBillboard(world, particles[i].Position, Theme.Sprite, Theme.Size * particles[i].Life / Theme.Life, Color.White));
 		}
 	}
 }

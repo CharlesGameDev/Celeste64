@@ -56,7 +56,7 @@ public class Routine
 		running.Add(routine);
 
 		// step in immediately when Run is called
-		Update();
+		Update(0);
 	}
 
 	public void Run(Co node)
@@ -100,13 +100,13 @@ public class Routine
 		condition = null;
 	}
 
-	public void Update()
+	public void Update(float deltaTime)
 	{
 	RunAgain:
 
 		if (waiting > 0)
 		{
-			waiting -= Time.Delta;
+			waiting -= deltaTime;
 			return;
 		}
 

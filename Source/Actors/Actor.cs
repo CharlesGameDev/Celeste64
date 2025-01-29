@@ -38,6 +38,10 @@ public class Actor
 	/// </summary>
 	public bool UpdateOffScreen = false;
 
+	public Time Time => World.Time;
+
+	public Controls Controls => World.Controls;
+
 	public BoundingBox LocalBounds
 	{
 		get => localBounds;

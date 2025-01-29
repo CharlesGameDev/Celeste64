@@ -130,10 +130,10 @@ public class Save
 		}
 	}
 
-	public void ToggleFullscreen()
+	public void ToggleFullscreen(App app)
 	{
 		Fullscreen = !Fullscreen;
-		SyncSettings();
+		ApplySettings(app);
 	}
 
 	public void ToggleZGuide()
@@ -151,29 +151,29 @@ public class Save
 		SpeedrunTimer = !SpeedrunTimer;
 	}
 
-	public void SetMusicVolume(int value)
+	public void SetMusicVolume(App app, int value)
 	{
 		MusicVolume = Calc.Clamp(value, 0, 10);
-		SyncSettings();
+		ApplySettings(app);
 	}
 
-	public void SetSfxVolume(int value)
+	public void SetSfxVolume(App app, int value)
 	{
 		SfxVolume = Calc.Clamp(value, 0, 10);
-		SyncSettings();
+		ApplySettings(app);
 	}
 
-	public void SyncSettings()
+	public void ApplySettings(App app)
 	{
-		App.Fullscreen = Fullscreen;
+		app.Window.Fullscreen = Fullscreen;
 		Audio.SetVCAVolume("vca:/music", Calc.Clamp(MusicVolume / 10.0f, 0, 1));
 		Audio.SetVCAVolume("vca:/sfx", Calc.Clamp(SfxVolume / 10.0f, 0, 1));
 	}
 
-	public void SaveToFile()
+	public void SaveToFile(string userPath)
 	{
-		var savePath = Path.Join(App.UserPath, FileName);
-		var tempPath = Path.Join(App.UserPath, FileName + ".backup");
+		var savePath = Path.Join(userPath, FileName);
+		var tempPath = Path.Join(userPath, FileName + ".backup");
 
 		// first save to a temporary file
 		{

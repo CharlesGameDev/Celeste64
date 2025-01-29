@@ -1,101 +1,52 @@
 
 namespace Celeste64;
 
-public static class Controls
+public class Controls(Input input, ControlsConfig config, int controllerIndex)
 {
-	public static readonly VirtualStick Move = new("Move", VirtualAxis.Overlaps.TakeNewer, 0.35f);
-	public static readonly VirtualStick Menu = new("Menu", VirtualAxis.Overlaps.TakeNewer, 0.35f);
-	public static readonly VirtualStick Camera = new("Camera", VirtualAxis.Overlaps.TakeNewer, 0.35f);
-	public static readonly VirtualButton Jump = new("Jump", .1f);
-	public static readonly VirtualButton Dash = new("Dash", .1f);
-	public static readonly VirtualButton Climb = new("Climb");
-	public static readonly VirtualButton Confirm = new("Confirm");
-	public static readonly VirtualButton Cancel = new("Cancel");
-	public static readonly VirtualButton Pause = new("Pause");
+	public readonly Input Input = input;
+	public readonly int ControllerIndex = controllerIndex;
 
-	public static void Load(ControlsConfig? config = null)
+	public readonly VirtualStick Move = new(input, config.Move, controllerIndex);
+	public readonly VirtualStick Camera = new(input, config.Camera, controllerIndex);
+	public readonly VirtualAction Jump = new(input, config.Jump, controllerIndex);
+	public readonly VirtualAction Dash = new(input, config.Dash, controllerIndex);
+	public readonly VirtualAction Climb = new(input, config.Climb, controllerIndex);
+	public readonly VirtualAction Pause = new(input, config.Pause, controllerIndex);
+	public readonly VirtualAction Confirm = new(input, config.Confirm, controllerIndex);
+	public readonly VirtualAction Cancel = new(input, config.Cancel, controllerIndex);
+
+	public readonly (VirtualAction Left, VirtualAction Right, VirtualAction Up, VirtualAction Down) Menu = (
+		new(input, config.MenuLeft, controllerIndex),
+		new(input, config.MenuRight, controllerIndex),
+		new(input, config.MenuUp, controllerIndex),
+		new(input, config.MenuDown, controllerIndex)
+	);
+
+	public void Consume()
 	{
-		static ControlsConfig.Stick FindStick(ControlsConfig? config, string name)
-		{
-			if (config != null && config.Sticks.TryGetValue(name, out var stick))
-				return stick;
-			if (ControlsConfig.Defaults.Sticks.TryGetValue(name, out stick))
-				return stick;
-			throw new Exception($"Missing Stick Binding for '{name}'");
-		}
-
-		static List<ControlsConfig.Binding> FindAction(ControlsConfig? config, string name)
-		{
-			if (config != null && config.Actions.TryGetValue(name, out var action))
-				return action;
-			if (ControlsConfig.Defaults.Actions.TryGetValue(name, out action))
-				return action;
-			throw new Exception($"Missing Action Binding for '{name}'");
-		}
-
-		Clear();
-
-		FindStick(config, "Move").BindTo(Move);
-		FindStick(config, "Camera").BindTo(Camera);
-		FindStick(config, "Menu").BindTo(Menu);
-
-		foreach (var it in FindAction(config, "Jump"))
-			it.BindTo(Jump);
-		foreach (var it in FindAction(config, "Dash"))
-			it.BindTo(Dash);
-		foreach (var it in FindAction(config, "Climb"))
-			it.BindTo(Climb);
-		foreach (var it in FindAction(config, "Confirm"))
-			it.BindTo(Confirm);
-		foreach (var it in FindAction(config, "Cancel"))
-			it.BindTo(Cancel);
-		foreach (var it in FindAction(config, "Pause"))
-			it.BindTo(Pause);
-
+		Jump.ConsumePress();
+		Dash.ConsumePress();
+		Climb.ConsumePress();
+		Confirm.ConsumePress();
+		Cancel.ConsumePress();
+		Pause.ConsumePress();
 	}
 
-	public static void Clear()
-	{
-		Move.Clear();
-		Camera.Clear();
-		Jump.Clear();
-		Dash.Clear();
-		Climb.Clear();
-		Menu.Clear();
-		Confirm.Clear();
-		Cancel.Clear();
-		Pause.Clear();
-	}
+	private readonly Dictionary<string, Dictionary<string, string>> prompts = [];
 
-	public static void Consume()
+	private string GetControllerName(GamepadProviders pad) => pad switch
 	{
-		Move.Consume();
-		Menu.Consume();
-		Camera.Consume();
-		Jump.Consume();
-		Dash.Consume();
-		Climb.Consume();
-		Confirm.Consume();
-		Cancel.Consume();
-		Pause.Consume();
-	}
-
-	private static readonly Dictionary<string, Dictionary<string, string>> prompts = [];
-
-	private static string GetControllerName(Gamepads pad) => pad switch
-	{
-		Gamepads.DualShock4 => "PlayStation 4",
-		Gamepads.DualSense => "PlayStation 5",
-		Gamepads.Nintendo => "Nintendo Switch",
-		Gamepads.Xbox => "Xbox Series",
+		GamepadProviders.PlayStation => "PlayStation 5",
+		GamepadProviders.Nintendo => "Nintendo Switch",
+		GamepadProviders.Xbox => "Xbox Series",
 		_ => "Xbox Series",
 	};
 
-	private static string GetPromptLocation(string name)
+	private string GetPromptLocation(string name)
 	{
-		var gamepad = Input.Controllers[0];
+		var gamepad = Input.Controllers[ControllerIndex];
 		var deviceTypeName = 
-			gamepad.Connected ? GetControllerName(gamepad.Gamepad) : "PC";
+			gamepad.Connected ? GetControllerName(gamepad.GamepadProvider) : "PC";
 
 		if (!prompts.TryGetValue(deviceTypeName, out var list))
 			prompts[deviceTypeName] = list = [];
@@ -106,7 +57,7 @@ public static class Controls
 		return lookup;
 	}
 
-	public static string GetPromptLocation(VirtualButton button)
+	public string GetPromptLocation(VirtualAction button)
 	{
 		// TODO: instead, query the button's actual bindings and look up a
 		// texture based on that! no time tho
@@ -116,8 +67,10 @@ public static class Controls
 			return GetPromptLocation("cancel");
 	}
 
-	public static Subtexture GetPrompt(VirtualButton button)
+	public Subtexture GetPrompt(VirtualAction button)
 	{
 		return Assets.Subtextures.GetValueOrDefault(GetPromptLocation(button));
 	}
+
+	public bool IsUsingNintendo => Input.Controllers[ControllerIndex].GamepadProvider == GamepadProviders.Nintendo;
 }

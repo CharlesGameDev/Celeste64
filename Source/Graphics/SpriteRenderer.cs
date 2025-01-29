@@ -8,7 +8,7 @@ public class SpriteRenderer
 	private readonly List<SpriteVertex> spriteVertices = [];
 	private readonly List<int> spriteIndices = [];
 	private readonly List<SpriteBatch> spriteBatches = [];
-	private readonly Mesh spriteMesh = new();
+	private readonly Mesh<SpriteVertex> spriteMesh = new(Game.Instance.GraphicsDevice);
 	private readonly Material spriteMaterial = new(Assets.Shaders["Sprite"]);
 
 	public void Render(ref RenderState state, List<Sprite> sprites, bool postEffects)
@@ -38,10 +38,10 @@ public class SpriteRenderer
 				current.Count = 0;
 			}
 
-			spriteVertices.Add(new(board.A, board.Subtexture.TexCoords0, board.Color));
-			spriteVertices.Add(new(board.B, board.Subtexture.TexCoords1, board.Color));
-			spriteVertices.Add(new(board.C, board.Subtexture.TexCoords2, board.Color));
-			spriteVertices.Add(new(board.D, board.Subtexture.TexCoords3, board.Color));
+			spriteVertices.Add(new(board.A, board.Subtexture.TexCoords[0], board.Color));
+			spriteVertices.Add(new(board.B, board.Subtexture.TexCoords[1], board.Color));
+			spriteVertices.Add(new(board.C, board.Subtexture.TexCoords[2], board.Color));
+			spriteVertices.Add(new(board.D, board.Subtexture.TexCoords[3], board.Color));
 
 			spriteIndices.Add(i + 0);
 			spriteIndices.Add(i + 1);
@@ -56,30 +56,26 @@ public class SpriteRenderer
 		if (current.Count > 0)
 			spriteBatches.Add(current);
 
-		spriteMesh.SetVertices<SpriteVertex>(CollectionsMarshal.AsSpan(spriteVertices));
-		spriteMesh.SetIndices<int>(CollectionsMarshal.AsSpan(spriteIndices));
-        if (spriteMaterial.Shader?.Has("u_matrix") ?? false)
-		    spriteMaterial.Set("u_matrix", state.Camera.ViewProjection);
-        if (spriteMaterial.Shader?.Has("u_far") ?? false)
-		    spriteMaterial.Set("u_far", state.Camera.FarPlane);
-        if (spriteMaterial.Shader?.Has("u_near") ?? false)
-		    spriteMaterial.Set("u_near", state.Camera.NearPlane);
+		spriteMesh.SetVertices(CollectionsMarshal.AsSpan(spriteVertices));
+		spriteMesh.SetIndices(CollectionsMarshal.AsSpan(spriteIndices));
+
+		spriteMaterial.Vertex.SetUniformBuffer(new UniformBuffers.SpriteVertex(state.Camera.ViewProjection));
+		spriteMaterial.Fragment.SetUniformBuffer(new UniformBuffers.SpriteFragment(state.Camera));
 
 		foreach (var batch in spriteBatches)
 		{
-            if (spriteMaterial.Shader?.Has("u_texture") ?? false)
-			    spriteMaterial.Set("u_texture", batch.Texture);
+			spriteMaterial.Fragment.Samplers[0] = new(batch.Texture, new TextureSampler(TextureFilter.Linear, TextureWrap.Clamp, TextureWrap.Clamp));
 
-			var call = new DrawCommand(state.Camera.Target, spriteMesh, spriteMaterial)
+			state.GraphicsDevice.Draw(new DrawCommand(state.Camera.Target, spriteMesh, spriteMaterial)
 			{
 				BlendMode = BlendMode.Premultiply,
-				DepthMask = false,
+				DepthTestEnabled = true,
+				DepthWriteEnabled = false,
 				DepthCompare = postEffects ? DepthCompare.Always : DepthCompare.Less,
 				CullMode = CullMode.None,
 				MeshIndexStart = batch.Index,
 				MeshIndexCount = batch.Count
-			};
-			call.Submit();
+			});
 			state.Calls++;
 			state.Triangles += batch.Count / 3;
 		}
