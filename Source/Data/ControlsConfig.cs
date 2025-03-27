@@ -57,22 +57,22 @@ public class ControlsConfig
 	public ActionBinding MenuLeft { get; private set; } = new ActionBinding()
 		.Add(Keys.Left, Keys.A)
 		.Add(Buttons.Left)
-		.AddLeftJoystickLeft();
+		.AddLeftJoystickLeft(0.50f);
 
 	public ActionBinding MenuRight { get; private set; } = new ActionBinding()
 		.Add(Keys.Right, Keys.D)
 		.Add(Buttons.Right)
-		.AddLeftJoystickRight();
+		.AddLeftJoystickRight(0.50f);
 
 	public ActionBinding MenuUp { get; private set; } = new ActionBinding()
 		.Add(Keys.Up, Keys.W)
 		.Add(Buttons.Up)
-		.AddLeftJoystickUp();
+		.AddLeftJoystickUp(0.50f);
 
 	public ActionBinding MenuDown { get; private set; } = new ActionBinding()
 		.Add(Keys.Down, Keys.S)
 		.Add(Buttons.Down)
-		.AddLeftJoystickDown();
+		.AddLeftJoystickDown(0.50f);
 }
 
 [JsonSourceGenerationOptions(
