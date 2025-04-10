@@ -14,16 +14,15 @@ public class ControlsConfig
 
 	public ActionBinding Jump { get; private set; } = new ActionBinding()
 		.Add(Keys.C, Keys.Space)
-		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Left)
 		.Add(Buttons.South, Buttons.North);
 
 	public ActionBinding Dash { get; private set; } = new ActionBinding()
 		.Add(Keys.X)
-		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Right)
+		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Left, MouseButtons.Right)
 		.Add(Buttons.West, Buttons.East);
 
 	public ActionBinding Climb { get; private set; } = new ActionBinding()
-		.Add(Keys.Z,Keys.V,Keys.LeftShift, Keys.RightShift)
+		.Add(Keys.Z,Keys.V,Keys.LeftShift, Keys.RightShift, Keys.LeftControl, Keys.RightControl)
 		.Add(Buttons.LeftShoulder,Buttons.RightShoulder)
 		.Add(Axes.LeftTrigger, 1, 0.4f)
 		.Add(Axes.RightTrigger, 1, 0.4f);
@@ -42,7 +41,7 @@ public class ControlsConfig
 
 	public ActionBinding Pause { get; private set; } = new ActionBinding()
 		.Add(Keys.Enter, Keys.Escape)
-		.Add(Buttons.Start, Buttons.Select, Buttons.Back);
+		.Add(Buttons.Start, Buttons.Guide, Buttons.Back);
 
 	public StickBinding Move { get; private set; } = new StickBinding(0.35f, AxisBinding.Overlaps.TakeNewer)
 		.AddWasd([FILTER_MOUSE_CAMERA])
