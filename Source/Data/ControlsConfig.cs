@@ -14,16 +14,15 @@ public class ControlsConfig
 
 	public ActionBindingSet Jump { get; private set; } = new ActionBindingSet()
 		.Add(Keys.C, Keys.Space)
-		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Left)
 		.Add(Buttons.South, Buttons.North);
 
 	public ActionBindingSet Dash { get; private set; } = new ActionBindingSet()
 		.Add(Keys.X)
-		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Right)
+		.Add([FILTER_MOUSE_CAMERA], MouseButtons.Left, MouseButtons.Right)
 		.Add(Buttons.West, Buttons.East);
 
 	public ActionBindingSet Climb { get; private set; } = new ActionBindingSet()
-		.Add(Keys.Z,Keys.V,Keys.LeftShift, Keys.RightShift)
+		.Add(Keys.Z,Keys.V,Keys.LeftShift, Keys.RightShift, Keys.LeftControl, Keys.RightControl)
 		.Add(Buttons.LeftShoulder,Buttons.RightShoulder)
 		.Add(Axes.LeftTrigger, 1, 0.4f)
 		.Add(Axes.RightTrigger, 1, 0.4f);
@@ -57,22 +56,22 @@ public class ControlsConfig
 	public ActionBindingSet MenuLeft { get; private set; } = new ActionBindingSet()
 		.Add(Keys.Left, Keys.A)
 		.Add(Buttons.Left)
-		.AddLeftJoystickLeft();
+		.AddLeftJoystickLeft(0.50f);
 
 	public ActionBindingSet MenuRight { get; private set; } = new ActionBindingSet()
 		.Add(Keys.Right, Keys.D)
 		.Add(Buttons.Right)
-		.AddLeftJoystickRight();
+		.AddLeftJoystickRight(0.50f);
 
 	public ActionBindingSet MenuUp { get; private set; } = new ActionBindingSet()
 		.Add(Keys.Up, Keys.W)
 		.Add(Buttons.Up)
-		.AddLeftJoystickUp();
+		.AddLeftJoystickUp(0.50f);
 
 	public ActionBindingSet MenuDown { get; private set; } = new ActionBindingSet()
 		.Add(Keys.Down, Keys.S)
 		.Add(Buttons.Down)
-		.AddLeftJoystickDown();
+		.AddLeftJoystickDown(0.50f);
 }
 
 [JsonSourceGenerationOptions(
