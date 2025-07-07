@@ -238,8 +238,8 @@ public class SkinnedModel : Model
 
                     state.GraphicsDevice.Draw(new(state.Camera.Target, Template.Mesh, mat)
                     {
-                        MeshIndexStart = primitive.Index,
-                        MeshIndexCount = primitive.Count,
+                        IndexOffset = primitive.Index,
+                        IndexCount = primitive.Count,
 						DepthTestEnabled = true,
 						DepthWriteEnabled = state.DepthMask,
                         DepthCompare = state.DepthCompare,
@@ -265,8 +265,8 @@ public class SkinnedModel : Model
 
                     state.GraphicsDevice.Draw(new(state.Camera.Target, Template.Mesh, mat)
                     {
-                        MeshIndexStart = primitive.Index,
-                        MeshIndexCount = primitive.Count,
+                        IndexOffset = primitive.Index,
+                        IndexCount = primitive.Count,
 						DepthTestEnabled = true,
 						DepthWriteEnabled = state.DepthMask,
                         DepthCompare = state.DepthCompare,

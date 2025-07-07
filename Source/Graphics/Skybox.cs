@@ -16,12 +16,12 @@ public class Skybox
 
 		var block = Texture.Width / 4;
 		
-		var u = new Subtexture(Texture, new Rect(block * 0, block * 0, block, block));
-		var d = new Subtexture(Texture, new Rect(block * 0, block * 2, block, block));
-		var n = new Subtexture(Texture, new Rect(block * 0, block * 1, block, block));
-		var e = new Subtexture(Texture, new Rect(block * 1, block * 1, block, block));
-		var s = new Subtexture(Texture, new Rect(block * 2, block * 1, block, block));
-		var w = new Subtexture(Texture, new Rect(block * 3, block * 1, block, block));
+		var u = new Subtexture(Texture, new Rect(block * 0, block * 0, block, block).Inflate(-0.5f));
+		var d = new Subtexture(Texture, new Rect(block * 0, block * 2, block, block).Inflate(-0.5f));
+		var n = new Subtexture(Texture, new Rect(block * 0, block * 1, block, block).Inflate(-0.5f));
+		var e = new Subtexture(Texture, new Rect(block * 1, block * 1, block, block).Inflate(-0.5f));
+		var s = new Subtexture(Texture, new Rect(block * 2, block * 1, block, block).Inflate(-0.5f));
+		var w = new Subtexture(Texture, new Rect(block * 3, block * 1, block, block).Inflate(-0.5f));
 
 		var v0 = new Vec3(-1, -1, 1);
 		var v1 = new Vec3(1, -1, 1);

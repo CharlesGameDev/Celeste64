@@ -6,20 +6,20 @@ public class Controls(Input input, ControlsConfig config, int controllerIndex)
 	public readonly Input Input = input;
 	public readonly int ControllerIndex = controllerIndex;
 
-	public readonly VirtualStick Move = new(input, config.Move, controllerIndex);
-	public readonly VirtualStick Camera = new(input, config.Camera, controllerIndex);
-	public readonly VirtualAction Jump = new(input, config.Jump, controllerIndex);
-	public readonly VirtualAction Dash = new(input, config.Dash, controllerIndex);
-	public readonly VirtualAction Climb = new(input, config.Climb, controllerIndex);
-	public readonly VirtualAction Pause = new(input, config.Pause, controllerIndex);
-	public readonly VirtualAction Confirm = new(input, config.Confirm, controllerIndex);
-	public readonly VirtualAction Cancel = new(input, config.Cancel, controllerIndex);
+	public readonly VirtualStick Move = new(input, "Move", config.Move, controllerIndex);
+	public readonly VirtualStick Camera = new(input, "Camera", config.Camera, controllerIndex);
+	public readonly VirtualAction Jump = new(input, "Jump", config.Jump, controllerIndex);
+	public readonly VirtualAction Dash = new(input, "Dash", config.Dash, controllerIndex);
+	public readonly VirtualAction Climb = new(input, "Climb", config.Climb, controllerIndex);
+	public readonly VirtualAction Pause = new(input, "Pause", config.Pause, controllerIndex);
+	public readonly VirtualAction Confirm = new(input, "Confirm", config.Confirm, controllerIndex);
+	public readonly VirtualAction Cancel = new(input, "Cancel", config.Cancel, controllerIndex);
 
 	public readonly (VirtualAction Left, VirtualAction Right, VirtualAction Up, VirtualAction Down) Menu = (
-		new(input, config.MenuLeft, controllerIndex),
-		new(input, config.MenuRight, controllerIndex),
-		new(input, config.MenuUp, controllerIndex),
-		new(input, config.MenuDown, controllerIndex)
+		new(input, "MenuLeft", config.MenuLeft, controllerIndex),
+		new(input, "MenuRight", config.MenuRight, controllerIndex),
+		new(input, "MenuUp", config.MenuUp, controllerIndex),
+		new(input, "MenuDown", config.MenuDown, controllerIndex)
 	);
 
 	public void Consume()

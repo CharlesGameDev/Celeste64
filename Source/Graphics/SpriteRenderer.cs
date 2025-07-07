@@ -73,8 +73,8 @@ public class SpriteRenderer
 				DepthWriteEnabled = false,
 				DepthCompare = postEffects ? DepthCompare.Always : DepthCompare.Less,
 				CullMode = CullMode.None,
-				MeshIndexStart = batch.Index,
-				MeshIndexCount = batch.Count
+				IndexOffset = batch.Index,
+				IndexCount = batch.Count
 			});
 			state.Calls++;
 			state.Triangles += batch.Count / 3;

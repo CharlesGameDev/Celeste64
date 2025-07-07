@@ -106,8 +106,8 @@ public class SimpleModel : Model
 				DepthTestEnabled = true,
 				DepthWriteEnabled = state.DepthMask,
 				CullMode = CullMode,
-				MeshIndexStart = segment.IndexStart,
-				MeshIndexCount = segment.IndexCount
+				IndexOffset = segment.IndexStart,
+				IndexCount = segment.IndexCount
 			});
 			state.Calls++;
 			state.Triangles += segment.IndexCount / 3;
